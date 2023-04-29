@@ -35,14 +35,59 @@ program.parse();
 const options = program.opts();
 const dir = program.args[0];
 
-async function main() {
+type Files = string[];
+
+async function listFiles(dir: string) {
   try {
-    writeOut(`Optimizing assets in ${dir}...\n`)
-    const files = await fs.readdir(dir);
-    console.log(files);
+    const files: Files = await fs.readdir(dir);
+    if (!files?.length) return [];
+
+    for (let file of files) {
+      const path = `${dir}/${file}`;
+      const stat = await fs.stat(path);
+      if (stat.isDirectory()) {
+        const subFiles = await listFiles(path);
+        if (subFiles?.length) {
+          files.push(...subFiles.map((f) => `${file}/${f}`));
+        }
+      }
+    }
+    return files;
   } catch (err: unknown) {
-    if (err instanceof Error)
+    if (err instanceof Error) {
       writeError(err.message);
+    }
+  }
+
+  return [];
+}
+
+async function getImages(dir: string) {
+  try {
+    const files: Files = await listFiles(dir);
+    if (!files?.length) return [];
+
+    const images = files.filter((file) => {
+      const ext = file.split(".").pop();
+      return ext === "png" || ext === "jpg";
+    })
+
+    return images;
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      writeError(err.message);
+    }
+  }
+
+  return [];
+}
+
+async function main() {
+  writeOut("Here are the images:");
+  writeOut("\n");
+  for (let image of await getImages(dir)) {
+    writeOut(`- ${image}`);
+    writeOut("\n");
   }
 }
 
