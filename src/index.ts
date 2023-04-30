@@ -60,6 +60,7 @@ class MediaOptimizer {
     this.checkOutputDir();
     await this.listFiles(this.dir);
     this.classifyFiles();
+    await this.removeConvertedFiles();
   }
 
   async listFiles(dir: string) {
@@ -106,6 +107,7 @@ class MediaOptimizer {
   }
 
   async printImages() {
+    if (!this.images.length) return;
     writeOut("Here are the images:");
     writeOut("\n");
     for (let file of this.images) {
@@ -115,6 +117,7 @@ class MediaOptimizer {
   }
 
   async printVideos() {
+    if (!this.videos.length) return;
     writeOut("Here are the videos:");
     writeOut("\n");
     for (let file of this.videos) {
@@ -157,15 +160,43 @@ class MediaOptimizer {
     }
   }
 
-  async printMimeType() {
+  async removeConvertedFiles() {
+    const convertedImages = [];
+    const convertedVideos = [];
     for (let file of this.images) {
-      const mimeType = await exec(`file --mime-type -b ${file}`);
+      const mimeType = await this.getMimeType(file);
       if (mimeType.err) {
-        writeError(mimeType.err.message + "\n");
         continue;
       }
-      writeOut(mimeType.stdout);
+      const type = mimeType.stdout.trim();
+      if (type === "image/webp") {
+        continue;
+      }
+      convertedImages.push(file);
     }
+    for (let file of this.videos) {
+      const videoCodec = await this.getVideoCodec(file);
+      if (videoCodec.err) {
+        continue;
+      }
+      const codec = videoCodec.stdout.trim();
+      if (codec === "hevc") {
+        continue;
+      }
+      convertedVideos.push(file);
+    }
+    this.images = convertedImages;
+    this.videos = convertedVideos;
+  }
+
+  async getMimeType(file: string) {
+    const { stdout, stderr, err } = await exec(`file --mime-type -b ${file}`);
+    return { stdout, stderr, err };
+  }
+
+  async getVideoCodec(file: string) {
+    const { stdout, stderr, err } = await exec(`ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 '${file}'`);
+    return { stdout, stderr, err };
   }
 }
 
@@ -186,5 +217,6 @@ function exec(command: string) {
 const mediaOptimizer = new MediaOptimizer(dir);
 
 mediaOptimizer.init().then(() => {
-  mediaOptimizer.printMimeType();
+  mediaOptimizer.printImages();
+  // mediaOptimizer.printVideos();
 })
