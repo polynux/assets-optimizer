@@ -43,7 +43,12 @@ const Database = sqlite3.verbose().Database;
 const options = program.opts();
 const dir = program.args[0].replace(/\/$/, "");
 
-type File = string;
+type File = {
+  path: string;
+  codec?: string;
+  mimeType?: string;
+  converted?: boolean;
+};
 type Files = File[];
 
 class MediaOptimizer {
@@ -63,21 +68,32 @@ class MediaOptimizer {
     this.checkOutputDir();
     await this.listFiles(this.dir);
     this.classifyFiles();
-    await this.removeConvertedFiles();
+    // await this.removeConvertedFiles();
   }
 
   async listFiles(dir: string) {
     try {
-      const filesTemp: Files = await fs.readdir(dir);
+      const filesTemp: Files = (await fs.readdir(dir)).map((file) => {
+        return { path: `${dir}/${file}` };
+      });
       if (!filesTemp.length) return;
 
       for (let file of filesTemp) {
-        const path = `${dir}/${file}`;
-        const stat = await fs.stat(path);
+        const stat = await fs.stat(file.path);
         if (stat.isDirectory()) {
-          await this.listFiles(path);
+          await this.listFiles(file.path);
         } else {
-          this.files.push(path);
+          file.mimeType = (await this.getMimeType(file.path)).stdout.trim();
+          if (file.mimeType === "image/webp") {
+            file.converted = true;
+          }
+          if (file.mimeType === "video/mp4") {
+            file.codec = (await this.getVideoCodec(file.path)).stdout.trim();
+            if (file.codec === "hevc") {
+              file.converted = true;
+            }
+          }
+          this.files.push(file);
         }
       }
     } catch (err: unknown) {
@@ -92,14 +108,14 @@ class MediaOptimizer {
     writeOut("Here are the files:");
     writeOut("\n");
     for (let file of this.files) {
-      writeOut(`- ${file}`);
+      writeOut(`- ${file.path}`);
       writeOut("\n");
     }
   }
 
   filterFilesByExtensions(extensions: string[]) {
     return this.files.filter((file) => {
-      const ext = file.split(".").pop();
+      const ext = file.path.split(".").pop();
       return ext && extensions.includes(ext);
     });
   }
@@ -114,7 +130,7 @@ class MediaOptimizer {
     writeOut("Here are the images:");
     writeOut("\n");
     for (let file of this.images) {
-      writeOut(`- ${file}`);
+      writeOut(`- ${file.path}`);
       writeOut("\n");
     }
   }
@@ -124,7 +140,7 @@ class MediaOptimizer {
     writeOut("Here are the videos:");
     writeOut("\n");
     for (let file of this.videos) {
-      writeOut(`- ${file}`);
+      writeOut(`- ${file.path}`);
       writeOut("\n");
     }
   }
@@ -163,35 +179,6 @@ class MediaOptimizer {
     }
   }
 
-  async removeConvertedFiles() {
-    const convertedImages = [];
-    const convertedVideos = [];
-    for (let file of this.images) {
-      const mimeType = await this.getMimeType(file);
-      if (mimeType.err) {
-        continue;
-      }
-      const type = mimeType.stdout.trim();
-      if (type === "image/webp") {
-        continue;
-      }
-      convertedImages.push(file);
-    }
-    for (let file of this.videos) {
-      const videoCodec = await this.getVideoCodec(file);
-      if (videoCodec.err) {
-        continue;
-      }
-      const codec = videoCodec.stdout.trim();
-      if (codec === "hevc") {
-        continue;
-      }
-      convertedVideos.push(file);
-    }
-    this.images = convertedImages;
-    this.videos = convertedVideos;
-  }
-
   async getMimeType(file: string) {
     const { stdout, stderr, err } = await exec(`file --mime-type -b ${file}`);
     return { stdout, stderr, err };
@@ -226,9 +213,9 @@ class MediaOptimizer {
     const db = new Database(`${this.dir}/../${options.output}/files.db`);
     db.serialize(async () => {
       db.run("CREATE TABLE IF NOT EXISTS files (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, converted BOOLEAN DEFAULT 0, codec TEXT)");
-      const stmt = db.prepare("INSERT INTO files (name, codec) VALUES (?, ?)");
+      const stmt = db.prepare("INSERT INTO files (name, codec, converted) VALUES (?, ?, ?)");
       for (let file of this.files) {
-        stmt.run(file,'hevc');
+        stmt.run(file.path, file.codec || file.mimeType, file.converted ? 1 : 0);
       }
       stmt.finalize();
     });
@@ -253,7 +240,5 @@ function exec(command: string) {
 const mediaOptimizer = new MediaOptimizer(dir);
 
 mediaOptimizer.init().then(() => {
-  mediaOptimizer.printImages();
   mediaOptimizer.writeFilesToDb();
-  // mediaOptimizer.printVideos();
 })
