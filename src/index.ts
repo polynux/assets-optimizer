@@ -37,6 +37,9 @@ function writeOut(str: string) {
 
 program.parse();
 
+import sqlite3 from "sqlite3";
+const Database = sqlite3.verbose().Database;
+
 const options = program.opts();
 const dir = program.args[0].replace(/\/$/, "");
 
@@ -215,6 +218,22 @@ class MediaOptimizer {
       }
     }
   }
+
+  /*
+   * Write file list to a sqlite database
+   * */
+  async writeFilesToDb() {
+    const db = new Database(`${this.dir}/../${options.output}/files.db`);
+    db.serialize(async () => {
+      db.run("CREATE TABLE IF NOT EXISTS files (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, converted BOOLEAN DEFAULT 0, codec TEXT)");
+      const stmt = db.prepare("INSERT INTO files (name, codec) VALUES (?, ?)");
+      for (let file of this.files) {
+        stmt.run(file,'hevc');
+      }
+      stmt.finalize();
+    });
+    db.close();
+  }
 }
 
 function exec(command: string) {
@@ -235,5 +254,6 @@ const mediaOptimizer = new MediaOptimizer(dir);
 
 mediaOptimizer.init().then(() => {
   mediaOptimizer.printImages();
+  mediaOptimizer.writeFilesToDb();
   // mediaOptimizer.printVideos();
 })
