@@ -33,7 +33,8 @@ function writeOut(str: string) {
 program.parse();
 
 const options = program.opts();
-const dir = program.args[0];
+// remove / at the end of the path if present
+const dir = program.args[0].replace(/\/$/, "");
 
 type Files = string[];
 
@@ -57,7 +58,7 @@ class MediaOptimizer {
       if (!filesTemp?.length) return;
 
       for (let file of filesTemp) {
-        const path = `${dir}/${file}`;
+        const path = `${this.dir}/${file}`;
         const stat = await fs.stat(path);
         if (stat.isDirectory()) {
           await this.listFiles(path);
