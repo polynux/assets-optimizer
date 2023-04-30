@@ -11,7 +11,11 @@ program
 
 program
   .argument("<DIR>", "Source directory")
-  .option("-o, --output <DIR>", "Output directory (converted by default)", "converted")
+  .option(
+    "-o, --output <DIR>",
+    "Output directory (converted by default)",
+    "converted"
+  )
   .option("-r, --replace", "Replace files in source directory");
 
 program.showHelpAfterError();
@@ -20,7 +24,7 @@ program.configureOutput({
   writeOut: (str) => writeOut(str),
   writeErr: (str) => writeError(str),
   outputError: (str, write) => write(chalk.red(str)),
-})
+});
 
 function writeError(str: string) {
   process.stderr.write(chalk.red(str));
@@ -66,7 +70,7 @@ class MediaOptimizer {
         if (stat.isDirectory()) {
           await this.listFiles(path);
         } else {
-           this.files.push(path);
+          this.files.push(path);
         }
       }
     } catch (err: unknown) {
@@ -90,7 +94,7 @@ class MediaOptimizer {
     return this.files.filter((file) => {
       const ext = file.split(".").pop();
       return ext && extensions.includes(ext);
-    })
+    });
   }
 
   classifyFiles() {
@@ -120,7 +124,24 @@ class MediaOptimizer {
 const mediaOptimizer = new MediaOptimizer(dir);
 
 mediaOptimizer.init().then(() => {
-  mediaOptimizer.printFiles();
-  mediaOptimizer.printImages();
-  mediaOptimizer.printVideos();
-})
+  // mediaOptimizer.printFiles();
+  // mediaOptimizer.printImages();
+  // mediaOptimizer.printVideos();
+});
+
+// check if "converted" directory exists in one level above the source directory
+// if not, create it
+async function checkOutputDir() {
+  const outputDir = `${dir}/../${options.output}`;
+  try {
+    await fs.access(outputDir);
+    writeOut("Output directory checked\n");
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      await fs.mkdir(outputDir);
+      writeOut("Output directory created\n");
+    }
+  }
+}
+
+checkOutputDir();
