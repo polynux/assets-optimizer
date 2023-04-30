@@ -37,73 +37,80 @@ const dir = program.args[0];
 
 type Files = string[];
 
-async function listFiles(dir: string) {
-  const files: Files = [];
-  try {
-    const filesTemp: Files = await fs.readdir(dir);
-    if (!filesTemp?.length) return files;
+class MediaOptimizer {
+  private files: Files = [];
+  private dir: string;
+  private imgExtensions = ["png", "jpg", "jpeg", "gif", "svg"];
+  private videosExtensions = ["mp4", "webm", "mkv"];
 
-    for (let file of filesTemp) {
-      const path = `${dir}/${file}`;
-      const stat = await fs.stat(path);
-      if (stat.isDirectory()) {
-        const subFiles = await listFiles(path);
-        if (subFiles?.length) {
-          files.push(...subFiles.map((f) => `${file}/${f}`));
+  constructor(dir: string) {
+    this.dir = dir;
+  }
+
+  async init() {
+    await this.listFiles(this.dir);
+  }
+
+  async listFiles(dir: string) {
+    try {
+      const filesTemp: Files = await fs.readdir(dir);
+      if (!filesTemp?.length) return;
+
+      for (let file of filesTemp) {
+        const path = `${dir}/${file}`;
+        const stat = await fs.stat(path);
+        if (stat.isDirectory()) {
+          await this.listFiles(path);
+        } else {
+          this.files.push(path);
         }
-      } else {
-        files.push(file);
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        writeError(err.message);
       }
     }
-  } catch (err: unknown) {
-    if (err instanceof Error) {
-      writeError(err.message);
+  }
+
+  async printFiles() {
+    writeOut("Here are the files:");
+    writeOut("\n");
+    for (let file of this.files) {
+      writeOut(`- ${file}`);
+      writeOut("\n");
     }
   }
 
-  return files;
-}
-
-const imgExtensions = ["png", "jpg", "jpeg", "gif", "svg"];
-
-async function getImages(dir: string) {
-  try {
-    const files: Files = await listFiles(dir);
-    if (!files?.length) return [];
-
-    const images = files.filter((file) => {
+  filterFilesByExtensions(extensions: string[]) {
+    return this.files.filter((file) => {
       const ext = file.split(".").pop();
-      return ext && imgExtensions.includes(ext);
+      return ext && extensions.includes(ext);
     })
+  }
 
-    return images;
-  } catch (err: unknown) {
-    if (err instanceof Error) {
-      writeError(err.message);
+  async printImages() {
+    writeOut("Here are the images:");
+    writeOut("\n");
+    for (let file of this.filterFilesByExtensions(this.imgExtensions)) {
+      writeOut(`- ${file}`);
+      writeOut("\n");
     }
   }
 
-  return [];
-}
-
-async function printImages() {
-  writeOut("Here are the images:");
-  writeOut("\n");
-  for (let image of await getImages(dir)) {
-    writeOut(`- ${image}`);
+  async printVideos() {
+    writeOut("Here are the videos:");
     writeOut("\n");
+    for (let file of this.filterFilesByExtensions(this.videosExtensions)) {
+      writeOut(`- ${file}`);
+      writeOut("\n");
+    }
   }
 }
 
-printImages();
+const mediaOptimizer = new MediaOptimizer(dir);
 
-async function printFiles() {
-  writeOut("Here are the files:");
-  writeOut("\n");
-  for (let file of await listFiles(dir)) {
-    writeOut(`- ${file}`);
-    writeOut("\n");
-  }
-}
-
-// printFiles();
+mediaOptimizer.init().then(() => {
+  mediaOptimizer.printFiles();
+  mediaOptimizer.printImages();
+  mediaOptimizer.printVideos();
+})
