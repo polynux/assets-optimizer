@@ -1,6 +1,6 @@
 {
   "name": "media-optimizer",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A simple tool to optimize media files",
   "main": "./src/index.ts",
   "type": "module",
@@ -14,6 +14,7 @@
   "bin": {
     "media-optimizer": "./dist/index.js"
   },
+  "repository": "polynux/assets-optimizer",
   "author": "polynux",
   "license": "GPL-3.0",
   "dependencies": {
