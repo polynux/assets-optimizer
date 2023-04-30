@@ -55,6 +55,7 @@ class MediaOptimizer {
   }
 
   async init() {
+    this.checkOutputDir();
     await this.listFiles(this.dir);
     this.classifyFiles();
   }
@@ -119,29 +120,24 @@ class MediaOptimizer {
       writeOut("\n");
     }
   }
-}
 
-const mediaOptimizer = new MediaOptimizer(dir);
-
-mediaOptimizer.init().then(() => {
-  // mediaOptimizer.printFiles();
-  // mediaOptimizer.printImages();
-  // mediaOptimizer.printVideos();
-});
-
-// check if "converted" directory exists in one level above the source directory
-// if not, create it
-async function checkOutputDir() {
-  const outputDir = `${dir}/../${options.output}`;
-  try {
-    await fs.access(outputDir);
-    writeOut("Output directory checked\n");
-  } catch (err: unknown) {
-    if (err instanceof Error) {
-      await fs.mkdir(outputDir);
-      writeOut("Output directory created\n");
+  async checkOutputDir() {
+    const outputDir = `${this.dir}/../${options.output}`;
+    try {
+      await fs.access(outputDir);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        await fs.mkdir(outputDir);
+        let dirPath = this.dir.split("/");
+        dirPath.pop();
+        writeOut(
+          `Output directory created at ${dirPath.join("/")}/${options.output}\n`
+        );
+      }
     }
   }
 }
 
-checkOutputDir();
+const mediaOptimizer = new MediaOptimizer(dir);
+
+mediaOptimizer.init();
