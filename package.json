@@ -1,13 +1,14 @@
 {
   "name": "media-optimizer",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "A simple tool to optimize media files",
   "main": "./src/index.ts",
   "type": "module",
   "scripts": {
     "dev": "ts-node --esm src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "prepublish": "npm run build"
   },
   "keywords": ["media", "optimizer", "image", "video", "audio"],
   "bin": {

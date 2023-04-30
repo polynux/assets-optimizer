@@ -102,6 +102,8 @@ class MediaOptimizer {
       if (err instanceof Error) {
         writeError(err.message + "\n");
         writeOut("Files length: " + this.files.length + "\n");
+      } else {
+        console.log(err);
       }
     }
   }
@@ -182,12 +184,12 @@ class MediaOptimizer {
   }
 
   async getMimeType(file: string) {
-    const { stdout, stderr, err } = await exec(`file --mime-type -b ${file}`);
+    const { stdout, stderr, err } = await exec(`file --mime-type -b "${file}"`);
     return { stdout, stderr, err };
   }
 
   async getVideoCodec(file: string) {
-    const { stdout, stderr, err } = await exec(`ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 '${file}'`);
+    const { stdout, stderr, err } = await exec(`ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "${file}"`);
     return { stdout, stderr, err };
   }
 
