@@ -1,4 +1,5 @@
 import { promises as fs } from "fs";
+import { exec } from "child_process";
 import { Command } from "commander";
 import chalk from "chalk";
 
@@ -55,6 +56,7 @@ class MediaOptimizer {
   }
 
   async init() {
+    await this.checkDependencies();
     this.checkOutputDir();
     await this.listFiles(this.dir);
     this.classifyFiles();
@@ -136,6 +138,43 @@ class MediaOptimizer {
       }
     }
   }
+
+  async checkDependencies() {
+    const dependencies = ["ffmpeg", "cwebp"];
+    const errors: string[] = [];
+    for (let dep of dependencies) {
+      try {
+        await execPromise(`which ${dep}`);
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          errors.push(dep);
+        }
+      }
+    }
+    if (errors.length) {
+      writeError(`Please install ${errors.join(", ")}\n`);
+      process.exit(1);
+    }
+  }
+
+  printMimeType() {
+    for (let file of this.files) {
+      fs.stat(file).then((stat) => {
+        // const mimeType = stat.mtime;
+        // writeOut(mimeType);
+        console.log(stat);
+      })
+    }
+  }
+}
+
+function execPromise(command: string) {
+  return new Promise((resolve, reject) => {
+    exec(command, (err, stdout, stderr) => {
+      if (err) return reject(err);
+      resolve(stdout);
+    });
+  });
 }
 
 const mediaOptimizer = new MediaOptimizer(dir);
