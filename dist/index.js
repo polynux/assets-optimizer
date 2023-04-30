@@ -205,6 +205,5 @@ function exec(command) {
 }
 const mediaOptimizer = new MediaOptimizer(dir);
 mediaOptimizer.init().then(() => {
-    mediaOptimizer.printFiles();
     mediaOptimizer.writeFilesToDb();
 });
