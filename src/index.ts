@@ -38,11 +38,12 @@ const dir = program.args[0];
 type Files = string[];
 
 async function listFiles(dir: string) {
+  const files: Files = [];
   try {
-    const files: Files = await fs.readdir(dir);
-    if (!files?.length) return [];
+    const filesTemp: Files = await fs.readdir(dir);
+    if (!filesTemp?.length) return files;
 
-    for (let file of files) {
+    for (let file of filesTemp) {
       const path = `${dir}/${file}`;
       const stat = await fs.stat(path);
       if (stat.isDirectory()) {
@@ -50,17 +51,20 @@ async function listFiles(dir: string) {
         if (subFiles?.length) {
           files.push(...subFiles.map((f) => `${file}/${f}`));
         }
+      } else {
+        files.push(file);
       }
     }
-    return files;
   } catch (err: unknown) {
     if (err instanceof Error) {
       writeError(err.message);
     }
   }
 
-  return [];
+  return files;
 }
+
+const imgExtensions = ["png", "jpg", "jpeg", "gif", "svg"];
 
 async function getImages(dir: string) {
   try {
@@ -69,7 +73,7 @@ async function getImages(dir: string) {
 
     const images = files.filter((file) => {
       const ext = file.split(".").pop();
-      return ext === "png" || ext === "jpg";
+      return ext && imgExtensions.includes(ext);
     })
 
     return images;
@@ -82,7 +86,7 @@ async function getImages(dir: string) {
   return [];
 }
 
-async function main() {
+async function printImages() {
   writeOut("Here are the images:");
   writeOut("\n");
   for (let image of await getImages(dir)) {
@@ -91,4 +95,15 @@ async function main() {
   }
 }
 
-main();
+printImages();
+
+async function printFiles() {
+  writeOut("Here are the files:");
+  writeOut("\n");
+  for (let file of await listFiles(dir)) {
+    writeOut(`- ${file}`);
+    writeOut("\n");
+  }
+}
+
+// printFiles();
