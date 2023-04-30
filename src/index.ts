@@ -1,5 +1,5 @@
 import { promises as fs } from "fs";
-import { exec } from "child_process";
+import { exec as execCallback } from "child_process";
 import { Command } from "commander";
 import chalk from "chalk";
 
@@ -144,7 +144,7 @@ class MediaOptimizer {
     const errors: string[] = [];
     for (let dep of dependencies) {
       try {
-        await execPromise(`which ${dep}`);
+        await exec(`which ${dep}`);
       } catch (err: unknown) {
         if (err instanceof Error) {
           errors.push(dep);
@@ -157,26 +157,34 @@ class MediaOptimizer {
     }
   }
 
-  printMimeType() {
-    for (let file of this.files) {
-      fs.stat(file).then((stat) => {
-        // const mimeType = stat.mtime;
-        // writeOut(mimeType);
-        console.log(stat);
-      })
+  async printMimeType() {
+    for (let file of this.images) {
+      const mimeType = await exec(`file --mime-type -b ${file}`);
+      if (mimeType.err) {
+        writeError(mimeType.err.message + "\n");
+        continue;
+      }
+      writeOut(mimeType.stdout);
     }
   }
 }
 
-function execPromise(command: string) {
-  return new Promise((resolve, reject) => {
-    exec(command, (err, stdout, stderr) => {
-      if (err) return reject(err);
-      resolve(stdout);
-    });
-  });
+function exec(command: string) {
+  return new Promise<{ err: Error | null; stdout: string; stderr: string }>(
+    (resolve, reject) => {
+      execCallback(command, (err, stdout, stderr) => {
+        if (err) {
+          reject({ err, stdout, stderr });
+        } else {
+          resolve({ err: null, stdout, stderr });
+        }
+      });
+    }
+  );
 }
 
 const mediaOptimizer = new MediaOptimizer(dir);
 
-mediaOptimizer.init();
+mediaOptimizer.init().then(() => {
+  mediaOptimizer.printMimeType();
+})
