@@ -198,6 +198,23 @@ class MediaOptimizer {
     const { stdout, stderr, err } = await exec(`ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 '${file}'`);
     return { stdout, stderr, err };
   }
+
+  /*
+  * TODO
+  * Convert images to webp
+  * */
+  async convertImages() {
+    for (let file of this.images) {
+      const { stdout, stderr, err } = await exec(
+        `cwebp -q 80 ${file} -o ${file}.webp`
+      );
+      if (err) {
+        writeError(err.message + "\n");
+        writeError(stderr + "\n");
+        writeError(stdout + "\n");
+      }
+    }
+  }
 }
 
 function exec(command: string) {
