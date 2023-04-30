@@ -11,7 +11,7 @@ program
 
 program
   .argument("<DIR>", "Source directory")
-  .option("-o, --output <DIR>", "Output directory (temp by default)")
+  .option("-o, --output <DIR>", "Output directory (converted by default)", "converted")
   .option("-r, --replace", "Replace files in source directory");
 
 program.showHelpAfterError();
@@ -33,16 +33,18 @@ function writeOut(str: string) {
 program.parse();
 
 const options = program.opts();
-// remove / at the end of the path if present
 const dir = program.args[0].replace(/\/$/, "");
 
-type Files = string[];
+type File = string;
+type Files = File[];
 
 class MediaOptimizer {
   private files: Files = [];
   private dir: string;
   private imgExtensions = ["png", "jpg", "jpeg", "gif", "svg"];
   private videosExtensions = ["mp4", "webm", "mkv"];
+  private images: Files = [];
+  private videos: Files = [];
 
   constructor(dir: string) {
     this.dir = dir;
@@ -50,25 +52,27 @@ class MediaOptimizer {
 
   async init() {
     await this.listFiles(this.dir);
+    this.classifyFiles();
   }
 
   async listFiles(dir: string) {
     try {
       const filesTemp: Files = await fs.readdir(dir);
-      if (!filesTemp?.length) return;
+      if (!filesTemp.length) return;
 
       for (let file of filesTemp) {
-        const path = `${this.dir}/${file}`;
+        const path = `${dir}/${file}`;
         const stat = await fs.stat(path);
         if (stat.isDirectory()) {
           await this.listFiles(path);
         } else {
-          this.files.push(path);
+           this.files.push(path);
         }
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
-        writeError(err.message);
+        writeError(err.message + "\n");
+        writeOut("Files length: " + this.files.length + "\n");
       }
     }
   }
@@ -89,10 +93,15 @@ class MediaOptimizer {
     })
   }
 
+  classifyFiles() {
+    this.images = this.filterFilesByExtensions(this.imgExtensions);
+    this.videos = this.filterFilesByExtensions(this.videosExtensions);
+  }
+
   async printImages() {
     writeOut("Here are the images:");
     writeOut("\n");
-    for (let file of this.filterFilesByExtensions(this.imgExtensions)) {
+    for (let file of this.images) {
       writeOut(`- ${file}`);
       writeOut("\n");
     }
@@ -101,7 +110,7 @@ class MediaOptimizer {
   async printVideos() {
     writeOut("Here are the videos:");
     writeOut("\n");
-    for (let file of this.filterFilesByExtensions(this.videosExtensions)) {
+    for (let file of this.videos) {
       writeOut(`- ${file}`);
       writeOut("\n");
     }
